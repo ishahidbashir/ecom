@@ -20,30 +20,55 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>PRiCE</td>
+                    <th>image</th>
+                    <th>quantity</th>
+                    <th>Price</th>
+                </tr>
+                @foreach ($cartItems as $cartItem)
+                    <tr class="item">
+                        <td>
+                            @if ($cartItem->image_path)
+                                <img class='mx-auto' id='imgP'
+                                    src="{{ asset('storage/' . $cartItem->image_path) }}" width="100"
+                                    height="50" />
+                            @else
+                                No Image
+                            @endif
+                        </td>
+                        <td>{{ $cartItem->quantity }}</td>
+                        <td>{{ $cartItem->price }}</td>
+
+                    </tr>
+                @endforeach
+                <tr>
+                    <td>Price</td>
+                    <td></td>
                     <td>{{ $total }}</td>
                 </tr>
                 <tr>
                     <td>Tax</td>
+                    <td></td>
                     <td>0</td>
                 </tr>
                 <tr>
 
                     <td>Delivery Charges</td>
+                    <td></td>
                     <td>0</td>
-                  
+
                 </tr>
                 <tr>
-                    <td>TOtal Amount</td>
-                    <td>{{$total}}</td>
-                 
+                    <td>Total Amount</td>
+                    <td></td>
+                    <td>{{ $total }}</td>
+
                 </tr>
-              
+
             </tbody>
         </table>
         <a class="btn btn-warning mx-2 py-2 rounded" style="float:right;">Order Now</a>
     </div>
-  
+
 </body>
 
 </html>

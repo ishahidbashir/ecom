@@ -25,12 +25,26 @@ class userController extends Controller
     }
     public function saveUser(Request $request)
     {
-        $user = new EcomUser;
+        $validatedData = $request->validate([
+            'userName' => 'required|string|min:6|max:255',
+            'Email' => 'required|string|email|unique:users|max:255',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+
+        $user = new EcomUser($validatedData);
         $user->name = $request['userName'];
         $user->email = $request['Email'];
+        $user->user_role = 2;
         $user->password = bcrypt($request['password']);
         $user->save();
-        return redirect('/')->with('success', 'User added successfully.');
+        if($user->save()){
+            return redirect('/')->with('success', 'User added successfully.');
+        }
+        else{
+            return redirect()->back()->withErrors($user->getErrors())->withInput(); 
+        }
+        
     }
     public function loginUser(Request $request)
     {
@@ -86,8 +100,8 @@ class userController extends Controller
         if (session()->has('user_id')) {
             $user_id = session('user_id');
             $products = Product::all();
-            $count = cart::where('user_id',$user_id)->count();
-            return view('welcome', compact('products','count'));
+            $count = cart::where('user_id', $user_id)->count();
+            return view('welcome', compact('products', 'count'));
         }
         return redirect('/');
 
@@ -96,13 +110,24 @@ class userController extends Controller
     {
         if ($req->session()->has('user_id')) {
             $uid = session('user_id');
-            $cart = new Cart;
-            $cart->user_id = $uid;
-            $cart->product_id = $req->product_id;
-            $cart->quantity =$req->qty;
-            $cart->save();
+            $user_id = $uid;
+            $product_id = $req->product_id;
+            $quantity = $req->qty;
+           
+            $existingCart = Cart::where('user_id', $user_id)
+            ->where('product_id', $product_id)
+            ->first();
+            if($existingCart){
+                $existingCart->update(['quantity' => $quantity]);
+            }
+            else{
+                $cart = new Cart;
+                $cart->user_id = $uid;
+                $cart->product_id = $req->product_id;
+                $cart->quantity = $req->qty;
+                $cart->save();
+            }           
             return redirect('/welcome');
-
         } else {
             return redirect('login');
         }
@@ -111,34 +136,42 @@ class userController extends Controller
     function usersCartItems()
     {
         $uid = session('user_id');
-        $data =DB::table('cart')
-        ->join('products', 'cart.product_id', '=', 'products.id')
-        ->select('cart.*', 'products.*', 'cart.id as cart_id')
-        ->where('cart.user_id', $uid)
-        ->get();
-    
+        $data = DB::table('cart')
+            ->join('products', 'cart.product_id', '=', 'products.id')
+            ->select('cart.*', 'products.*', 'cart.id as cart_id')
+            ->where('cart.user_id', $uid)
+            ->get();
+
         return view('cart', ['products' => $data]);
 
     }
-   
-     function removeProduct($id){
+
+    function removeProduct($id)
+    {
         Product::destroy($id);
         return redirect('welcome');
-     }
+    }
     function removeFromCart($id)
     {
         Cart::destroy($id);
-          return redirect('/cartView');
+        return redirect('/cartView');
     }
 
-function orderNow(){
-    $uid = session('user_id');
-    $total=  DB::table('cart')
-        ->join('products', 'cart.product_id', 'products.id')
-        ->where('cart.user_id', $uid)
-        ->sum('products.price');
-        return view('orderNow',['total'=>$total]);
-}
+    function orderNow()
+    {
+        $uid = session('user_id');
+
+        $cartItems = DB::table('cart')
+        ->join('products', 'cart.product_id', '=', 'products.id')
+        ->select('cart.*', 'products.*')
+        ->get();
+
+        $total = DB::table('cart')
+            ->join('products', 'cart.product_id', 'products.id')
+            ->where('cart.user_id', $uid)
+            ->sum(DB::raw('products.price * cart.quantity'));
+        return view('orderNow', ['total' => $total ,'cartItems' => $cartItems]);
+    }
 
 
 }
